@@ -36,13 +36,12 @@ def bfgs [m] obj (x_0: [m]f32) max_iter tol =
 
 		-- Update H_k.
 		-- (6.5) s_k = a_k * p_k
-		let s_k = linalg_f32.vecscale a_k p_k
+		let s_k = map2 (f32.-) x_k1 x_k
 		-- (6.5) y_k = f_k1 - f_k
 		let y_k = map2 (f32.-) (grad obj x_k1) (grad obj x_k)
 
 		-- (6.14) p_k = 1 / y_k^T * s_k
-		let rho_k = 1f32 / 
-			(map2 (f32.*) y_k s_k |> reduce (f32.+) 0f32)
+		let rho_k = map2 (f32.*) y_k s_k |> reduce (f32.+) 0f32 |> (f32./) 1
 
 		-- (6.17) H_k1 = (I - rho_k * s_k * y_k^T) * H_k
 		--   * (I - rho_k * y_k * s_k^T) 
@@ -50,8 +49,9 @@ def bfgs [m] obj (x_0: [m]f32) max_iter tol =
 		let H_k1_left = 
 			linalg_f32.outer s_k y_k |> linalg_f32.matscale rho_k |> linalg_f32.matsub I
 		let H_k1_right =
-				linalg_f32.outer y_k s_k |> linalg_f32.matscale rho_k |> linalg_f32.matsub I
-		let H_k1_final = linalg_f32.outer s_k s_k |> linalg_f32.matscale rho_k
+			linalg_f32.outer y_k s_k |> linalg_f32.matscale rho_k |> linalg_f32.matsub I
+		let H_k1_final = 
+			linalg_f32.outer s_k s_k |> linalg_f32.matscale rho_k
 	
 		let H_k1 = linalg_f32.matmul (linalg_f32.matmul H_k1_left H_k) H_k1_right |> linalg_f32.matadd H_k1_final
 	
