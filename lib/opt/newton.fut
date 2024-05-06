@@ -54,7 +54,10 @@ def bfgs [m] obj (x_0: [m]f32) max_iter tol =
 			linalg_f32.outer s_k s_k |> linalg_f32.matscale rho_k
 	
 		let H_k1 = linalg_f32.matmul (linalg_f32.matmul H_k1_left H_k) H_k1_right |> linalg_f32.matadd H_k1_final
-	
-		in (k + 1, x_k1, grad obj x_k1, H_k1)
 
+		-- If we've hit a NaN value, reset H_k to the I.
+		in if any (f32.isnan) x_k1 
+			then (k + 1, x_k, grad obj x_k, I)
+			else (k + 1, x_k1, grad obj x_k1, H_k1)
+	
 	in x_ast
