@@ -11,7 +11,7 @@ def sd obj x_0 max_iter tol =
 		(k < max_iter) && (linalg_f32.vecnorm f_k > tol) do
 
 		let p_k = map (f32.* -1f32) f_k
-		let a_k = backtracking obj f_k x_k p_k 1000
+		let a_k = backtracking obj x_k p_k 1000
 
 		let x_k1 = map (f32.* a_k) p_k |> map2 (f32.+) x_k
 
