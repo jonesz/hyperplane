@@ -4,8 +4,6 @@ import "fd"
 
 module linalg_f32 = mk_linalg f32
 
-let grad f x = vjp f x 1f32
-
 def newton [m] obj (x_0: [m]f32) max_iter tol =
 	let (_, x_ast, _) = loop (k, x_k, f_k) = (0, x_0, (grad obj x_0)) while
 		(k < max_iter) && (linalg_f32.vecnorm f_k > tol) do
@@ -13,7 +11,7 @@ def newton [m] obj (x_0: [m]f32) max_iter tol =
 		-- (6.2) p_k = -1 * H_k * f_k
 		let B_k = hess_approx_fwd_fd obj x_k (replicate m 1e-7f32) 1f32 |> linalg_f32.inv
 		let p_k = linalg_f32.matvecmul_row B_k f_k |> linalg_f32.vecscale (-1f32)
-		let a_k = backtracking obj f_k x_k p_k 1000
+		let a_k = backtracking obj x_k p_k 1000
 
 		let x_k1 = map (f32.* a_k) p_k |> map2 (f32.+) x_k
 
@@ -30,7 +28,7 @@ def bfgs [m] obj (x_0: [m]f32) max_iter tol =
 
 		-- (6.2) p_k = -1 * H_k * f_k
 		let p_k = linalg_f32.matvecmul_row H_k f_k |> linalg_f32.vecscale (-1f32)
-		let a_k = backtracking obj f_k x_k p_k 1000
+		let a_k = backtracking obj x_k p_k 1000
 
 		let x_k1 = map (f32.* a_k) p_k |> map2 (f32.+) x_k
 

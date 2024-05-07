@@ -1,4 +1,4 @@
-let grad f x = vjp f x 1f32
+def grad f x = vjp f x 1f32
 
 def hess_approx_fwd_fd [m] obj (x: [m]f32) (h: [m]f32) e =
 	let f_k = grad obj x
