@@ -3,18 +3,18 @@ import "../github.com/diku-dk/linalg/linalg"
 
 local module type newton = {
 	type t
-	type~ mat [m]
+	type~ H [m] -- A square, inverse Hessian (B^{-1}).
 
-	val pk [m] : mat[m] -> [m]t -> [m]t
+	val pk [m] : H[m] -> [m]t -> [m]t
 
-	val bfgs_update [m] : (H_k: mat[m]) -> (s_k: [m]t) -> (y_k: [m]t) -> mat[m]
+	val bfgs_update [m] : (H_k: H[m]) -> (s_k: [m]t) -> (y_k: [m]t) -> H[m]
 }
 
 module mk_newton(T: real) : newton with t = T.t = {
 	type t = T.t
 
 	module linalg_f32 = mk_linalg T
-	type~ mat[m] = [m][m]t
+	type~ H[m] = [m][m]t
 
 	-- (6.2) p_k = -1 * H_k * f_k
 	def pk H_k f_k = 
