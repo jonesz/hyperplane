@@ -52,7 +52,7 @@ module mk_bfgs (T: real) (L: linesearch with t = T.t): method with t = T.t = {
 
 			-- If we've hit a NaN value, reset H_k to I.
 			in if any (T.isnan) x_k1
-				then (k + 1, x_k,  (grad obj x_k1), I)
+				then (k + 1, x_k,  (grad obj x_k),  I)
 				else (k + 1, x_k1, (grad obj x_k1), H_k1)
 
 		in x_ast
