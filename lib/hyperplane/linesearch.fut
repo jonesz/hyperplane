@@ -1,5 +1,44 @@
 import "fd"
 
+module type linesearch = {
+	type t
+	val alpha [m] : ([m]t -> t) -> [m]t -> [m]t -> i64 -> t
+}
+
+module mk_backtracking (T: real) : linesearch with t = T.t = {
+	type t = T.t
+
+	let grad f x = vjp f x (T.f32 1f32)
+
+	-- Algorithm 3.1 (Backtracking Line Search).
+	let backtracking [m] (obj: [m]t -> t) x_k p_k max_iter = 
+		let a_hat = (T.f32 1f32)    -- 1 for N/QN.
+		let rho   = (T.f32 0.33f32) -- rho \in (0, 1)
+		let c     = (T.f32 0.95f32) -- c \in (0, 1)
+
+		-- TODO: At some point, it might be worthwhile to
+		-- abstract the grad into a module (which would then
+		-- be passed in the creation of this module).
+		let f_k   = grad obj x_k
+
+		let cond a =
+			-- obj (x_k + a * p_k)
+			let left  = map (T.* a) p_k |> map2 (T.+) x_k |> obj
+			-- obj (x_k) + c * a * f_k^T * p_k
+			let right = map2 (T.*) f_k p_k |> reduce (T.+) (T.f32 0f32)
+				|> (T.*) c |> (T.*) a |> (T.+) (obj x_k)
+
+			in (T.<=) left right
+
+		let (_, a_ast) = loop (k, a) = (0i64, a_hat) while
+			(k < max_iter) && (cond a |> not) do -- repeat *until* -> not.
+			(k + 1, (T.*) rho a)
+		in a_ast
+
+	def alpha obj x_k p_k max_iter = 
+		backtracking obj x_k p_k max_iter
+}
+
 -- Algorithm 3.1 (Backtracking Line Search).
 def backtracking obj x_k p_k max_iter = 
 	let a_hat = 1f32    -- 1 for N/QN.
