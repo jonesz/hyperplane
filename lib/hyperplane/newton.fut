@@ -1,45 +1,30 @@
+import "../github.com/diku-dk/sparse/compressed"
 import "../github.com/diku-dk/linalg/linalg"
-import "linesearch"
-import "fd"
 
-module linalg_f32 = mk_linalg f32
+local module type newton = {
+	type t
+	type~ H [m] -- A square, inverse Hessian (B^{-1}).
 
-def newton [m] obj (x_0: [m]f32) max_iter tol =
-	let (_, x_ast, _) = loop (k, x_k, f_k) = (0, x_0, (grad obj x_0)) while
-		(k < max_iter) && (linalg_f32.vecnorm f_k > tol) do
+	val pk [m] : H[m] -> [m]t -> [m]t
 
-		-- (6.2) p_k = -1 * H_k * f_k
-		let B_k = hess_approx_fwd_fd obj x_k (replicate m 1e-7f32) 1f32 |> linalg_f32.inv
-		let p_k = linalg_f32.matvecmul_row B_k f_k |> linalg_f32.vecscale (-1f32)
-		let a_k = backtracking obj x_k p_k 1000
+	val bfgs_update [m] : (H_k: H[m]) -> (s_k: [m]t) -> (y_k: [m]t) -> H[m]
+}
 
-		let x_k1 = map (f32.* a_k) p_k |> map2 (f32.+) x_k
+module mk_newton(T: real) : newton with t = T.t = {
+	type t = T.t
 
-		in (k + 1, x_k1, grad obj x_k)
+	module linalg_f32 = mk_linalg T
+	type~ H[m] = [m][m]t
 
-	in x_ast
+	-- (6.2) p_k = -1 * H_k * f_k
+	def pk H_k f_k = 
+		linalg_f32.matvecmul_row H_k f_k |> linalg_f32.vecscale (T.f32 <| -1f32)
 
--- BFGS.
-def bfgs [m] obj (x_0: [m]f32) max_iter tol =
-	let I = linalg_f32.eye m
-
-	let (_, x_ast, _, _) = loop (k, x_k, f_k, H_k) = (0, x_0, (grad obj x_0), I) while
-		(k < max_iter) && (linalg_f32.vecnorm f_k > tol) do
-
-		-- (6.2) p_k = -1 * H_k * f_k
-		let p_k = linalg_f32.matvecmul_row H_k f_k |> linalg_f32.vecscale (-1f32)
-		let a_k = backtracking obj x_k p_k 1000
-
-		let x_k1 = map (f32.* a_k) p_k |> map2 (f32.+) x_k
-
-		-- Update H_k.
-		-- (6.5) s_k = a_k * p_k
-		let s_k = map2 (f32.-) x_k1 x_k
-		-- (6.5) y_k = f_k1 - f_k
-		let y_k = map2 (f32.-) (grad obj x_k1) (grad obj x_k)
+	def bfgs_update [m] H_k (s_k: [m]t) (y_k: [m]t) =
+		let I = linalg_f32.eye m
 
 		-- (6.14) p_k = 1 / y_k^T * s_k
-		let rho_k = map2 (f32.*) y_k s_k |> reduce (f32.+) 0f32 |> (f32./) 1
+		let rho_k = map2 (T.*) y_k s_k |> reduce (T.+) (T.i32 0) |> (T./) (T.i32 1)
 
 		-- (6.17) H_k1 = (I - rho_k * s_k * y_k^T) * H_k
 		--   * (I - rho_k * y_k * s_k^T) 
@@ -51,11 +36,12 @@ def bfgs [m] obj (x_0: [m]f32) max_iter tol =
 		let H_k1_final = 
 			linalg_f32.outer s_k s_k |> linalg_f32.matscale rho_k
 	
-		let H_k1 = linalg_f32.matmul (linalg_f32.matmul H_k1_left H_k) H_k1_right |> linalg_f32.matadd H_k1_final
+		in linalg_f32.matmul (linalg_f32.matmul H_k1_left H_k) H_k1_right |> linalg_f32.matadd H_k1_final
+}
 
-		-- If we've hit a NaN value, reset H_k to the I.
-		in if any (f32.isnan) x_k1 
-			then (k + 1, x_k, grad obj x_k, I)
-			else (k + 1, x_k1, grad obj x_k1, H_k1)
-	
-	in x_ast
+-- module mk_newton_sparse(T: real) : newton with t = T.t = {
+-- 	type t = T.t
+-- 
+-- 	module compressed_f32 = mk_compressed T
+-- 	type~ mat[n][m] = compressed_f32.sc[n][m]
+-- }
