@@ -3,7 +3,7 @@ import "method"
 import "linesearch"
 
 -- Steepest Descent.
-module mk_sd (T: real) (L: linesearch with t = T.t): method = {
+module mk_sd (T: real) (L: linesearch with t = T.t): method with t = T.t = {
 	type t = T.t
 	module linalg_t = mk_linalg T
 
